@@ -4,14 +4,14 @@
 
 ## The lazy way to ask a random student a question
 
-The Questionator is a Flask based web app that automatically collects student
+The Questionator is a Python 2 Flask based web app that automatically collects student
 names and profile pictures from the Slack channel used for class.
 
 It filters out any member with an `@galvanize.com` email address so you won't
 ask any support staff or instructors who are also on the channel questions.
 
 Because this interacts with Slack's API, you will need an API token. You can get
-an API key [here](https://api.slack.com/tokens). Set this key to a local
+an API key [here](https://api.slack.com/custom-integrations/legacy-tokens). Set this key to a local
 environment alias in your `.bash_profile`, `.bashrc`, or `.zshrc` resource
 file. Use the alias name `SLACK_TOKEN` so the python script will pull it in
 automatically when launched.
@@ -30,6 +30,13 @@ API calls are made through python using the [Slacker package](https://github.com
 
 ```bash
 $ pip install slacker
+```
+
+You will also need to install pyfiglet (for Python 2).  You can download it
+[here.](https://pypi.python.org/pypi/pyfiglet)  Once you extract it, run the setup.py 
+file in your Python 2 environment by typing
+```bash
+$ python setup.py install
 ```
 
 You will also have to specify what channel your class is using. You can do this

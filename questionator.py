@@ -29,6 +29,7 @@ from slacker import Slacker
 import pandas as pd
 from flask import Flask, request, url_for, render_template, request
 import cPickle as pickle
+#import pickle as pickle
 from pyfiglet import Figlet
 import numpy as np
 import pandas as pd
@@ -194,7 +195,8 @@ if __name__ == '__main__':
     api_token = os.environ['SLACK_TOKEN']
 
     ban = Figlet(font='doh')
-    print ban.renderText('Qbot')
+    print ban.renderText('Qbot') #
+    #print(ban.renderText('Qbot')) #
     print("*")*50
     print("Initializing Slack API")
     print("*")*50
