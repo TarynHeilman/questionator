@@ -33,7 +33,8 @@ $ pip install slacker
 ```
 
 You will also need to install pyfiglet (for Python 2).  You can download it
-[here.](https://pypi.python.org/pypi/pyfiglet)  Once you extract it, run the setup.py 
+[here.](https://pypi.python.org/pypi/pyfiglet), though the compressed file has been
+added to this repo.  Once you extract it, run the setup.py 
 file in your Python 2 environment by typing
 ```bash
 $ python setup.py install
