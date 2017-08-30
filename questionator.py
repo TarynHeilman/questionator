@@ -28,7 +28,7 @@ import argparse
 from slacker import Slacker
 import pandas as pd
 from flask import Flask, request, url_for, render_template, request
-import cPickle as pickle
+import pickle
 #import pickle as pickle
 from pyfiglet import Figlet
 import numpy as np
@@ -195,14 +195,14 @@ if __name__ == '__main__':
     api_token = os.environ['SLACK_TOKEN']
 
     ban = Figlet(font='doh')
-    print ban.renderText('Qbot') #
-    #print(ban.renderText('Qbot')) #
-    print("*")*50
+    # print ban.renderText('Qbot') #
+    print(ban.renderText('Qbot')) #
+    print("*"*50)
     print("Initializing Slack API")
-    print("*")*50
+    print("*"*50)
     slack, students = init_slack_channel(api_token, channel_name)
 
-    print("*")*50
+    print("*"*50)
     print("Getting usernames and avatars")
     slack_member_list = slack.users.list().body['members']
     usernames = [id_to_username(slack_member_list, x) for x in students]
@@ -215,7 +215,7 @@ if __name__ == '__main__':
     df['username'] = usernames
     df['num_quest'] = [0]*len(students)
 
-    print("*")*50
+    print("*"*50)
     print("Starting up Flask app")
-    print("*")*50
+    print("*"*50)
     app.run(host='0.0.0.0', port=8080, threaded=True)
