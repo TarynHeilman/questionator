@@ -1,9 +1,8 @@
 # The Questionator
 
-## The lazy way to ask a random student a question
-
 The Questionator is a Python 3 Flask web application that collects student
-names and profile pictures from the Slack channel used for class.
+names and profile pictures from a student Slack channel and then selects one
+to "questionate."
 
 It filters out any member with an `@galvanize.com` email address so you won't
 ask any support staff or instructors who are also on the channel questions.
