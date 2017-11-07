@@ -1,5 +1,3 @@
-![Header Image](https://github.com/whsky/questionator/blob/master/readme_images/QuestionatorHeader.png?raw=true "Header Image")
-
 # The Questionator
 
 ## The lazy way to ask a random student a question
@@ -33,9 +31,9 @@ $ pip install slacker
 ```
 
 You specify the Slack channel your class is using by passing it as a system
-argument when you call the script.
+argument when you exectute the script from terminal.
 
-An example run code looks like this:
+To run the Questionator:
 ```bash
 $ python questionator.py --chan='channel_name' 
 ```
