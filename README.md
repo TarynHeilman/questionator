@@ -4,7 +4,7 @@
 
 ## The lazy way to ask a random student a question
 
-The Questionator is a Python 2 Flask based web app that automatically collects student
+The Questionator is a Python 3 Flask web application that collects student
 names and profile pictures from the Slack channel used for class.
 
 It filters out any member with an `@galvanize.com` email address so you won't
@@ -32,28 +32,16 @@ API calls are made through python using the [Slacker package](https://github.com
 $ pip install slacker
 ```
 
-You will also need to install pyfiglet (for Python 2).  You can download it
-[here.](https://pypi.python.org/pypi/pyfiglet)  Once you extract it, run the setup.py 
-file in your Python 2 environment by typing
-```bash
-$ python setup.py install
-```
-
-You will also have to specify what channel your class is using. You can do this
-by using a system argument when you call the script.
-
-You can also specify whether our not you want the Questionator to send a
-Slack message to the user selected with the `qbot` Slack app built into the
-Questionator. This is set with `True` or `False` as the `--ping` system argument.
+You specify the Slack channel your class is using by passing it as a system
+argument when you call the script.
 
 An example run code looks like this:
 ```bash
-$ python questionator.py --chan='channel_name' --ping=False
+$ python questionator.py --chan='channel_name' 
 ```
 
 This would collect student names, Slack usernames, and profile pics for members
-in the 'channel_name' channel, and would not send messages to the channel when
-a student is called on.
+in the 'channel_name' channel.
 
 The script takes about 20 seconds to initialize with all the necessary info
 from the Slack API. After which, it will launch the Flask App
