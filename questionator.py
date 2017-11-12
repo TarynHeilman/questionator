@@ -3,9 +3,10 @@
 # Contributors: Frank Burkholder (FB)
 #
 # revisions:
-# 7 Nov 2017 - Updated to Python 3             (FB)
-#            - Slack messaging ability removed (FB)
-#            - Dependence on PyFiglet removed  (FB)
+# 07 Nov 2017 - Updated to Python 3                                 (FB)
+#             - Slack messaging ability removed                     (FB)
+#             - Dependence on PyFiglet removed                      (FB)
+# 12 Nov 2017 - Add function to pre-screen student list             (FB)
 #
 # Flask app for randomly selecting a student to ask a question
 #   This requires that Slacker installed (https://github.com/os/slacker),
@@ -32,6 +33,22 @@ import numpy as np
 import pandas as pd
 from random import randrange, sample, choice
 
+def adjust_student_list(slack, students):
+    print("Getting preliminary list of members...")
+    names = []
+    for mem_id in students:
+        names.append(slack.users.profile.get(mem_id).body['profile']['real_name'])
+    entry = 'y' 
+    while entry in ['y', 'Y']:
+        print("\nHere are the students for Questionating:")
+        for i, name in enumerate(names, 1):
+            print("{0:2d} {1}".format(i, name))
+        entry = input("\nWould you like to remove a student? (y/n) ")
+        if entry in ['y', 'Y']:
+            ind_del = int(input("The number of the student to remove: "))
+            del students[ind_del - 1]
+            del names[ind_del - 1]
+
 def init_slack_channel(api_token, channel_name):
     slack = Slacker(api_token)
     print("Collecting available Slack channels...")
@@ -53,7 +70,7 @@ def init_slack_channel(api_token, channel_name):
         email = slack.users.profile.get(member).body['profile']['email']
         if '@galvanize.com' not in email and member not in students:
             students.append(member)
-
+    adjust_student_list(slack, students)
     return slack, students
 
 def get_member_info(slack, member_id):
