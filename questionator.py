@@ -1,23 +1,23 @@
 #############################################################################
-# Steve Iannaccone
-# April 2017
+# Original creator: Steve Iannaccone
+# Contributors: Frank Burkholder (FB)
+#
+# revisions:
+# 07 Nov 2017 - Updated to Python 3                                 (FB)
+#             - Slack messaging ability removed                     (FB)
+#             - Dependence on PyFiglet removed                      (FB)
+# 12 Nov 2017 - Add function to pre-screen student list             (FB)
 #
 # Flask app for randomly selecting a student to ask a question
 #   This requires that Slacker installed (https://github.com/os/slacker),
 #   and that you have Slack API token saved to your bash profile as
-#   'SLACK_TOKEN' (https://api.slack.com/tokens), and that the :qbot: custom
-#   emoji is available on the channel you are using (if you are messaging
-#   the channel)
+#   'SLACK_TOKEN' (https://api.slack.com/tokens),
 #
-# Run this script from the terminal, it needs two additional arguements.
-#   1: --chan for what Slack channel on gStudents to pull the class roster from
-#   2: --ping whether or not to send a bot message to the channel when a
-#            question is asked
-#
+# Run this script from the terminal, passing the gstudents Slack channel
+# containing the students you'd like to question.
 # e.g.:
-#   $ python questionator.py --chan='g39ds_platte' --ping=False
-# This will use #g39ds_platte members as the class roster, and will not send a
-#   message to that channel when a question is asked.
+#   $ python questionator.py --chan='g39ds_platte'
+# This will use #g39ds_platte members as the class roster.
 #
 # This should take about 20sec to start up.
 #############################################################################
@@ -28,12 +28,26 @@ import argparse
 from slacker import Slacker
 import pandas as pd
 from flask import Flask, request, url_for, render_template, request
-import pickle
-#import pickle as pickle
-from pyfiglet import Figlet
+import pickle as pickle
 import numpy as np
 import pandas as pd
 from random import randrange, sample, choice
+
+def adjust_student_list(slack, students):
+    print("Getting preliminary list of members...")
+    names = []
+    for mem_id in students:
+        names.append(slack.users.profile.get(mem_id).body['profile']['real_name'])
+    entry = 'y'
+    while entry in ['y', 'Y']:
+        print("\nHere are the students for Questionating:")
+        for i, name in enumerate(names, 1):
+            print("{0:2d} {1}".format(i, name))
+        entry = input("\nWould you like to remove a student? (y/n) ")
+        if entry in ['y', 'Y']:
+            ind_del = int(input("The number of the student to remove: "))
+            del students[ind_del - 1]
+            del names[ind_del - 1]
 
 def init_slack_channel(api_token, channel_name):
     slack = Slacker(api_token)
@@ -56,7 +70,7 @@ def init_slack_channel(api_token, channel_name):
         email = slack.users.profile.get(member).body['profile']['email']
         if '@galvanize.com' not in email and member not in students:
             students.append(member)
-
+    adjust_student_list(slack, students)
     return slack, students
 
 def get_member_info(slack, member_id):
@@ -66,7 +80,6 @@ def get_member_info(slack, member_id):
     """
     name = slack.users.profile.get(member_id).body['profile']['real_name']
     avatar = slack.users.profile.get(member_id).body['profile']['image_192']
-
     return name, avatar
 
 def id_to_username(slack_member_list, member_id):
@@ -90,46 +103,7 @@ def getUserMap(slack_member_list):
     userIdNameMap[user['id']] = user['name']
   return userIdNameMap
 
-def direct_message(user_map, user_id):
-    """
-    INPUT: Dict of {userID:username}, Slack user ID as String
-    OUTPUT: None (Post a direct message to user_id on Slack)
-    --------------------------------------------------------------------------
-    We have to open a DM channel on slack to be able to post directly to a user.
-        afterwords we collect the new DM channel ID and use it to post a message
-        from the qbot questionator Slack bot.
-    """
-    #Open DM channel with the user:
-    new_dm = slack.im.open(user=user_id)
-    dm_id = new_dm.body['channel']['id']
-
-    #Get username for user ID paseed in
-    username = user_map[user_id]
-
-    #Select one of the following messages at random to send to student:
-    message_list = \
-        ["Oh snap! That's a tough one @{}...glad I'm not in your shoes."\
-            .format(username),
-        "Hmmmmm, think it over @{}...you got this!"\
-            .format(username),
-        "Psssst...The instructor just asked you a question @{}."\
-            .format(username),
-        "Uh-oh, better look up @{}, you just got asked a question!"\
-            .format(username)
-        ]
-    qbot_message = choice(message_list)
-    #requires that `:qbot:` custom emoji is available for your channel...
-    #Also set parse='full', and don't set the link_names variable for
-    #   hot-linking to username
-    slack.chat.post_message(channel=dm_id,
-                            text=qbot_message,
-                            username='Questionator',
-                            icon_emoji=':qbot:',
-                            parse='full',
-                            as_user=False)
-
 app = Flask(__name__)
-
 
 @app.route('/')
 def index():
@@ -151,11 +125,6 @@ def qbot():
     #slack.users.list().body['members'][1]['name']
     username = df.username[random_index]
     user_id = df.roster[random_index]
-
-    if ping_slack:
-        #Have the Questionator Slack the user a message:
-        direct_message(user_map, user_id)
-
     return render_template('question.html',
                             avatar=avatar_link,
                             name=member_name,
@@ -172,31 +141,9 @@ if __name__ == '__main__':
       '--chan',
       help="Pick the gStudents slack channel name from which you want to collect user profiles.")
 
-    parser.add_argument(
-      '--ping',
-      default=False,
-      help="Set if the `qbot` should ping the user on Slack when their name comes up.")
-
     args = parser.parse_known_args()
-
-    # if len(sys.argv) >= 2:
-    #     channel_name = sys.argv[1]
-    #     if len(sys.argv) == 3:
-    #         ping_slack = sys.argv[2]
-    #         ping_slack = ping_slack == 'True'
-    #     else:
-    #         ping_slack = False
-    # else:
-    #     raise ValueError("Please supply a Slack channel name as an arguement when calling questionator.py!")
-
     channel_name = args[0].chan
-    ping_slack = args[0].ping == 'True'
-
     api_token = os.environ['SLACK_TOKEN']
-
-    ban = Figlet(font='doh')
-    # print ban.renderText('Qbot') #
-    print(ban.renderText('Qbot')) #
     print("*"*50)
     print("Initializing Slack API")
     print("*"*50)
