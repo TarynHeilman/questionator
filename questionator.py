@@ -7,6 +7,7 @@
 #             - Slack messaging ability removed                     (FB)
 #             - Dependence on PyFiglet removed                      (FB)
 # 12 Nov 2017 - Add function to pre-screen student list             (FB)
+# 25 Feb 2018 - Use channels.info to get member list                (FB)
 #
 # Flask app for randomly selecting a student to ask a question
 #   This requires that Slacker installed (https://github.com/os/slacker),
@@ -32,6 +33,7 @@ import pickle as pickle
 import numpy as np
 import pandas as pd
 from random import randrange, sample, choice
+import json
 
 def adjust_student_list(slack, students):
     print("Getting preliminary list of members...")
@@ -43,6 +45,7 @@ def adjust_student_list(slack, students):
         print("\nHere are the students for Questionating:")
         for i, name in enumerate(names, 1):
             print("{0:2d} {1}".format(i, name))
+        print("\nThere are {} students.".format(len(students)))
         entry = input("\nWould you like to remove a student? (y/n) ")
         if entry in ['y', 'Y']:
             ind_del = int(input("The number of the student to remove: "))
@@ -56,13 +59,14 @@ def init_slack_channel(api_token, channel_name):
     chnl_names = []
     for x in range(len(chnls)):
         chnl_names.append(chnls[x]['name'])
-
-    #find where our channel is in the list:
-    chan_idx = chnl_names.index(channel_name)
-
+    chan_idx = chnl_names.index(channel_name)       # channel index
+    chan = chnls[chan_idx]                          # channel of interest
+    chan_id = chan['id']                            # channel id
+    chan_info = slack.channels.info(chan_id)        # channel info (json)
+    chan_dict = json.loads(chan_info.raw)           # channel dictionary
+    all_members = chan_dict['channel']['members']   # member ids
     #Collect all channel's member IDs:
     print("Collecting members from channel #{}...".format(channel_name))
-    all_members = chnls[chan_idx]['members']
     #Filter out any member with an @galvanize email address:
     print("Filter out any member with an @galvanize email address...")
     students = []
@@ -96,7 +100,7 @@ def id_to_username(slack_member_list, member_id):
 def getUserMap(slack_member_list):
   #get all users in the slack organization
   """
-  I modified this from the `slack_history.py` script from Chandler Abraham
+  Steve modified this from the `slack_history.py` script from Chandler Abraham
   """
   userIdNameMap = {}
   for user in slack_member_list:
@@ -158,7 +162,6 @@ if __name__ == '__main__':
 
     df = pd.DataFrame()
     df['roster'] = students
-    # df['id'] = slack_member_list
     df['username'] = usernames
     df['num_quest'] = [0]*len(students)
 
