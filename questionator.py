@@ -1,6 +1,6 @@
 #############################################################################
 # Original creator: Steve Iannaccone
-# Contributors: Frank Burkholder (FB)
+# Contributors: Frank Burkholder (FB), Taryn Heilman (TH)
 #
 # revisions:
 # 07 Nov 2017 - Updated to Python 3                                 (FB)
@@ -8,6 +8,9 @@
 #             - Dependence on PyFiglet removed                      (FB)
 # 12 Nov 2017 - Add function to pre-screen student list             (FB)
 # 25 Feb 2018 - Use channels.info to get member list                (FB)
+# 31 Mar 2020 - Fix docstrings                                      (TH)
+#             - Make filtering galvanize addresses optional         (TH)
+#             - Do not hard code port                               (TH)
 #
 # Flask app for randomly selecting a student to ask a question
 #   This requires that Slacker installed (https://github.com/os/slacker),
@@ -35,7 +38,14 @@ import pandas as pd
 from random import randrange, sample, choice
 import json
 
+
 def adjust_student_list(slack, students):
+    """Interactive, allows user to remove any students, modifies students list in place
+
+    INPUT:
+        slack: Slacker object slack
+        students: list of students
+    """
     print("Getting preliminary list of members...")
     names = []
     for mem_id in students:
@@ -52,7 +62,37 @@ def adjust_student_list(slack, students):
             del students[ind_del - 1]
             del names[ind_del - 1]
 
-def init_slack_channel(api_token, channel_name):
+
+def remove_galvanize_emails(slack, all_members):
+    """Filters out channel members with an @galvanize email address
+
+    INPUT:
+        slack: Slacker object slack
+        all_members: list of member objects
+
+    OUTPUT:
+        list students
+    """
+    print("Filtering out members with an @galvanize email address...")
+    students = []
+    for idx, member in enumerate(all_members):
+        email = slack.users.profile.get(member).body['profile']['email']
+        if '@galvanize.com' not in email and member not in students:
+            students.append(member)
+    return students
+
+
+def init_slack_channel(api_token, channel_name, remove_galvanize_employees):
+    """initialize slack channel
+
+    INPUT:
+        api_token: string, slack api token
+        channel_name: string, name of channel to pull members from
+        remove_galvanize_employees: bool, whether to filter out the @galvanize email addresses
+    OUTPUT:
+        Slacker object slack
+        list students
+    """
     slack = Slacker(api_token)
     print("Collecting available Slack channels...")
     chnls = slack.channels.list().body['channels']
@@ -65,17 +105,17 @@ def init_slack_channel(api_token, channel_name):
     chan_info = slack.channels.info(chan_id)        # channel info (json)
     chan_dict = json.loads(chan_info.raw)           # channel dictionary
     all_members = chan_dict['channel']['members']   # member ids
-    #Collect all channel's member IDs:
+
+    # Collect all channel's member IDs:
     print("Collecting members from channel #{}...".format(channel_name))
-    #Filter out any member with an @galvanize email address:
-    print("Filter out any member with an @galvanize email address...")
-    students = []
-    for idx, member in enumerate(all_members):
-        email = slack.users.profile.get(member).body['profile']['email']
-        if '@galvanize.com' not in email and member not in students:
-            students.append(member)
+    if remove_galvanize_employees:
+        students = remove_galvanize_emails(slack, all_members)
+    else:
+        students = all_members
+
     adjust_student_list(slack, students)
     return slack, students
+
 
 def get_member_info(slack, member_id):
     """
@@ -85,6 +125,7 @@ def get_member_info(slack, member_id):
     name = slack.users.profile.get(member_id).body['profile']['real_name']
     avatar = slack.users.profile.get(member_id).body['profile']['image_192']
     return name, avatar
+
 
 def id_to_username(slack_member_list, member_id):
     """
@@ -97,17 +138,23 @@ def id_to_username(slack_member_list, member_id):
         if member['profile']['real_name'] == name:
             return member['name']
 
-def getUserMap(slack_member_list):
-  #get all users in the slack organization
-  """
-  Steve modified this from the `slack_history.py` script from Chandler Abraham
-  """
-  userIdNameMap = {}
-  for user in slack_member_list:
-    userIdNameMap[user['id']] = user['name']
-  return userIdNameMap
+
+def get_user_map(slack_member_list):
+    """Get all users in the slack organization
+
+    Steve modified this from the `slack_history.py` script from Chandler Abraham
+
+    INPUT: list slack_member_list, get all users in the slack organization
+    OUTPUT: dictionary, with keys user id and the values user name
+    """
+    user_id_name_map = {}
+    for user in slack_member_list:
+        user_id_name_map[user['id']] = user['name']
+    return user_id_name_map
+
 
 app = Flask(__name__)
+
 
 @app.route('/')
 def index():
@@ -116,17 +163,18 @@ def index():
 
 @app.route('/question', methods=['POST'])
 def qbot():
-    #Find students who have answered the fewest questions:
+    # Find students who have answered the fewest questions:
     df_min = df[df.num_quest == min(df.num_quest)]
     stud_min = df_min.index.values.tolist()
-    #Pick a student with minimal questions asked at random:
+    # Pick a student with minimal questions asked at random:
     random_index = choice(stud_min)
 
     #Collect Student's Slack user ID and avatar pic link:
     member_name, avatar_link = get_member_info(slack, df.roster[random_index])
-    #+1 on the number of questions answered:
+    # +1 on the number of questions answered:
     df.num_quest[random_index] += 1
-    #slack.users.list().body['members'][1]['name']
+
+    # slack.users.list().body['members'][1]['name']
     username = df.username[random_index]
     user_id = df.roster[random_index]
     return render_template('question.html',
@@ -136,29 +184,40 @@ def qbot():
                             class_name=channel_name)
 
 
+def parse_args():
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser(description='The Questionator, a lazy way to ask the class a question.')
+
+    parser.add_argument('--chan', type=str,
+                        help="Pick the gStudents slack channel name from which you want to collect user profiles.")
+
+    parser.add_argument('--remove-galvanize-employees', type=str, default='True', choices=('True', 'False'),
+                        help="Whether to remove galvanize.com email addresses")
+
+    parser.add_argument('--port', type=int, default=8080,
+                        help='Which port number to run the questionator on')
+
+    args = parser.parse_args()
+    return args
+
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=\
-        'The Questionator, a lazy way to ask the class a question.')
+    args = parse_args()
 
-    parser.add_argument(
-      '--chan',
-      help="Pick the gStudents slack channel name from which you want to collect user profiles.")
-
-    args = parser.parse_known_args()
-    channel_name = args[0].chan
+    channel_name = args.chan
     api_token = os.environ['SLACK_TOKEN']
     print("*"*50)
     print("Initializing Slack API")
     print("*"*50)
-    slack, students = init_slack_channel(api_token, channel_name)
+    remove_galvanize_employees = args.remove_galvanize_employees == 'True'
+    slack, students = init_slack_channel(api_token, channel_name, remove_galvanize_employees)
 
     print("*"*50)
     print("Getting usernames and avatars")
     slack_member_list = slack.users.list().body['members']
     usernames = [id_to_username(slack_member_list, x) for x in students]
 
-    user_map = getUserMap(slack_member_list)
+    user_map = get_user_map(slack_member_list)
 
     df = pd.DataFrame()
     df['roster'] = students
@@ -168,4 +227,4 @@ if __name__ == '__main__':
     print("*"*50)
     print("Starting up Flask app")
     print("*"*50)
-    app.run(host='0.0.0.0', port=8080, threaded=True)
+    app.run(host='0.0.0.0', port=args.port, threaded=True)
