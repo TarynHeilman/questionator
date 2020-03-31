@@ -15,12 +15,12 @@
 # Flask app for randomly selecting a student to ask a question
 #   This requires that Slacker installed (https://github.com/os/slacker),
 #   and that you have Slack API token saved to your bash profile as
-#   'SLACK_TOKEN' (https://api.slack.com/tokens), 
+#   'SLACK_TOKEN' (https://api.slack.com/tokens),
 #
-# Run this script from the terminal, passing the gstudents Slack channel 
+# Run this script from the terminal, passing the gstudents Slack channel
 # containing the students you'd like to question.
 # e.g.:
-#   $ python questionator.py --chan='g39ds_platte' 
+#   $ python questionator.py --chan='g39ds_platte'
 # This will use #g39ds_platte members as the class roster.
 #
 # This should take about 20sec to start up.
@@ -50,7 +50,7 @@ def adjust_student_list(slack, students):
     names = []
     for mem_id in students:
         names.append(slack.users.profile.get(mem_id).body['profile']['real_name'])
-    entry = 'y' 
+    entry = 'y'
     while entry in ['y', 'Y']:
         print("\nHere are the students for Questionating:")
         for i, name in enumerate(names, 1):
